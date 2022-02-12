@@ -6,8 +6,13 @@ from typing import Optional
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 import datetime, time
-    
+from fastapi.middleware.cors import CORSMiddleware
+
+
 client = MongoClient('mongodb://localhost', 27017) 
+
+class Reservation(BaseModel):
+    room_No : int
 
 # TODO fill in database name
 db = client["project"]
@@ -17,6 +22,15 @@ toilet = db["toilet"]
 toilet_savetime = db["toilet_savetime"]
 
 app = FastAPI()
+
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # TODO complete all endpoint.
 @app.get("/")
@@ -61,41 +75,49 @@ def make(room_No : int):
     
 
 
-@app.put("/update_in/{room_No}")
-def update_in(room_No: int):
+@app.put("/update_in")
+def update_in(reservation: Reservation):
+    room_No = reservation.room_No
     room = toilet.find_one({"room_No":room_No},{"_id":0})
-    if(room["status"]==1):
+    if room != None :
+        if(room["status"]==1):
+            raise HTTPException( status_code = 417 , detail = { "msg" : "Not Empty" } )
+            '''return {
+                "result" : "Not Empty"
+            }'''
+        myquery = {"room_No":room_No}
+        newvalues = { "$set": { "status": 1,"datetime" : datetime.datetime.now() } }
+        toilet.update_one(myquery, newvalues)
         return {
-            "result" : "Not Empty"
-    }
-    myquery = {"room_No":room_No}
-    newvalues = { "$set": { "status": 1,"datetime" : datetime.datetime.now() } }
-    toilet.update_one(myquery, newvalues)
-    return {
-        "result" : "Success"
-    }
-    
-@app.put("/update_out/{room_No}")
-def update_out(room_No: int):
-    room = toilet.find_one({"room_No":room_No},{"_id":0})
-    room_savetime = toilet_savetime.find_one({"room_No":room_No},{"_id":0})
-    if(room["status"]==0):
-        return {
-            "result" : "Error"
+            "result" : "Success"
         }
-    myquery = {"room_No":room_No}
-    x = (datetime.datetime.now() - room["datetime"]) 
-    #print(type(x)) print(x)    print(y)
-    y = x.total_seconds() 
+    raise HTTPException( status_code = 405 , detail = { "msg" : "no room" } )
     
-    x = y + room_savetime["time"]
-    newvalues1 = { "$set": { "status": 0} }
-    newvalues2 = { "$set": { "time" : x, "number" : room_savetime["number"]+1 } }
-    toilet.update_one(myquery, newvalues1)
-    toilet_savetime.update_one(myquery,newvalues2)
-    return{
-        "result" : "success"
-    }
+@app.put("/update_out")
+def update_out(reservation: Reservation):
+    room_No = reservation.room_No
+    room = toilet.find_one({"room_No":room_No},{"_id":0})
+    if room != None :
+        room_savetime = toilet_savetime.find_one({"room_No":room_No},{"_id":0})
+        if(room["status"]==0):
+            raise HTTPException( status_code = 417 , detail = { "msg" : "No people in the room" } )
+            '''return {
+                "result" : "No people in the room"
+            }'''
+        myquery = {"room_No":room_No}
+        x = (datetime.datetime.now() - room["datetime"]) 
+        #print(type(x)) print(x)    print(y)
+        y = x.total_seconds() 
+        
+        x = y + room_savetime["time"]
+        newvalues1 = { "$set": { "status": 0} }
+        newvalues2 = { "$set": { "time" : x, "number" : room_savetime["number"]+1 } }
+        toilet.update_one(myquery, newvalues1)
+        toilet_savetime.update_one(myquery,newvalues2)
+        return{
+            "result" : "Success"
+        }
+    raise HTTPException( status_code = 405 , detail = { "msg" : "no room" } )
 
 '''toilet
 _id : ...
