@@ -75,7 +75,7 @@ def make(room_No : int):
     
 
 
-@app.put("/update_in")
+@app.post("/update_in")
 def update_in(reservation: Reservation):
     room_No = reservation.room_No
     room = toilet.find_one({"room_No":room_No},{"_id":0})
@@ -93,7 +93,7 @@ def update_in(reservation: Reservation):
         }
     raise HTTPException( status_code = 405 , detail = { "msg" : "no room" } )
     
-@app.put("/update_out")
+@app.post("/update_out")
 def update_out(reservation: Reservation):
     room_No = reservation.room_No
     room = toilet.find_one({"room_No":room_No},{"_id":0})
