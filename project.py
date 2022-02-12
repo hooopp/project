@@ -48,8 +48,8 @@ def get_room(room_No: int):
 def get_time():  
     roomtime = toilet_savetime.find({},{"_id":0})
     if roomtime != [] :
-        alltime = 0
-        people = 0
+        alltime = 300  #second
+        people = 1
         for i in roomtime :
             alltime += i["time"]
             people += i["number"]
